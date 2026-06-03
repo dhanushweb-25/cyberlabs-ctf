@@ -1,0 +1,32 @@
+# Python Caches & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+ENV/
+
+# Node.js (Frontend Dependencies & Builds)
+**/node_modules/
+**/dist/
+.eslintcache
+
+# Local Databases & Persistent Volumes
+postgres_data/
+*.db
+*.sqlite
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Credentials, Keys & Local Secrets
+.env
+*creds*.json
+*credentials*.json
+*key*.json
+!frontend/vercel.json

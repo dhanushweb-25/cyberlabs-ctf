@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #f8fafc;
+  color: #1e293b;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+code, pre {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Custom transitions and glassmorphism helpers */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.custom-shadow {
+  box-shadow: 0 4px 20px -2px rgba(3, 108, 95, 0.05), 0 2px 8px -1px rgba(3, 108, 95, 0.03);
+}
+
+/* Card hover animation */
+.hover-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -4px rgba(3, 108, 95, 0.08), 0 4px 12px -2px rgba(3, 108, 95, 0.04);
+}
+
+/* Active navigation link indicator */
+.nav-link-active {
+  color: #036c5f;
+  border-bottom: 2px solid #036c5f;
+}

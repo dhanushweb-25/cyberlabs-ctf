@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ctf-backend
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Neon PostgreSQL database connection URL
+      - key: SECRET_KEY
+        generateValue: true # Render will auto-generate a secure random 256-bit secret key
+      - key: CORS_ORIGINS
+        sync: false # Comma-separated Vercel frontend and local development URLs
+      - key: GOOGLE_APPLICATION_CREDENTIALS_JSON
+        sync: false # Optional: Google Cloud Service Account JSON for provisioning real VMs
