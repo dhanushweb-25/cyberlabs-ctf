@@ -24,12 +24,15 @@ window.fetch = async (input, init) => {
     init = init || {};
     if (init.headers instanceof Headers) {
       init.headers.set('Bypass-Tunnel-Reminder', 'true');
+      init.headers.set('ngrok-skip-browser-warning', 'true');
     } else if (Array.isArray(init.headers)) {
       init.headers.push(['Bypass-Tunnel-Reminder', 'true']);
+      init.headers.push(['ngrok-skip-browser-warning', 'true']);
     } else {
       init.headers = {
         ...init.headers,
         'Bypass-Tunnel-Reminder': 'true',
+        'ngrok-skip-browser-warning': 'true',
       };
     }
   }

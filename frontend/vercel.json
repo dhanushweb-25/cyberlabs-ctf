@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://slimy-cycles-send.loca.lt/api/:path*"
+      "destination": "https://snowiness-overlook-strategy.ngrok-free.dev/api/:path*"
     },
     {
       "source": "/(.*)",
