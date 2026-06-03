@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://cyberlabs-dhanush.loca.lt/api/:path*"
+      "destination": "https://slimy-cycles-send.loca.lt/api/:path*"
     },
     {
       "source": "/(.*)",
