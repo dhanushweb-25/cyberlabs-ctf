@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-ctf-backend.onrender.com/api/:path*"
+      "destination": "https://cyberlabs-ctf-1.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
