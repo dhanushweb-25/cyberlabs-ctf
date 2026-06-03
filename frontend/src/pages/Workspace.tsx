@@ -481,13 +481,13 @@ export const Workspace: React.FC = () => {
               </div>
             </div>
 
-            {/* Iframe */}
-            <iframe
-              src={`/api/challenges/terminal/${lab.instance_name}/?token=${token}`}
-              className="w-full flex-grow border-0 bg-slate-950"
-              title="Web Terminal"
-              allow="clipboard-read; clipboard-write"
-            />
+             {/* Iframe */}
+             <iframe
+               src={`/api/challenges/terminal/${lab.instance_name}?token=${token}`}
+               className="w-full flex-grow border-0 bg-slate-950"
+               title="Web Terminal"
+               allow="clipboard-read; clipboard-write"
+             />
             
           </div>
         </div>

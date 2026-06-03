@@ -295,11 +295,12 @@ def submit_flag(
     )
 
 # HTTP asset proxy
+@router.get("/terminal/{instance_name}")
 @router.get("/terminal/{instance_name}/{path:path}")
 async def terminal_http_proxy(
     instance_name: str,
-    path: str,
     request: Request,
+    path: str = "",
     db: Session = Depends(get_db)
 ):
     # 1. Resolve token from Query Param, Authorization Header, or Cookies
@@ -334,7 +335,7 @@ async def terminal_http_proxy(
         raise HTTPException(status_code=403, detail="Terminal instance not active or unauthorized")
 
     # 4. Proxy the HTTP request
-    target_path = f"/{path}" if path else "/"
+    target_path = path if path.startswith("/") else f"/{path}"
     
     challenge = db.query(models.Challenge).filter(models.Challenge.id == instance.challenge_id).first()
     is_gcp = challenge and challenge.provider_type == "gcp"
@@ -354,7 +355,22 @@ async def terminal_http_proxy(
             r = await client.get(target_url, timeout=5.0)
             headers = {k: v for k, v in r.headers.items() if k.lower() not in ["content-encoding", "transfer-encoding", "content-length"]}
             
-            response = Response(content=r.content, status_code=r.status_code, headers=headers)
+            content = r.content
+            # Inject base tag for HTML responses (usually the root page)
+            content_type = r.headers.get("content-type", "")
+            if "text/html" in content_type or not path or path == "/":
+                try:
+                    html_str = content.decode("utf-8", errors="ignore")
+                    base_tag = f'<base href="/api/challenges/terminal/{instance_name}/">'
+                    if "<head>" in html_str:
+                        html_str = html_str.replace("<head>", f"<head>{base_tag}")
+                    else:
+                        html_str = f"<html><head>{base_tag}</head>{html_str}"
+                    content = html_str.encode("utf-8")
+                except Exception as e:
+                    logger.error(f"Failed to inject base tag: {e}")
+            
+            response = Response(content=content, status_code=r.status_code, headers=headers)
             
             # 5. Set cookie to authenticate subsequent sub-resource requests
             # Max age of 1 hour, paths restricted to terminal endpoint
