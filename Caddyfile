@@ -1,0 +1,24 @@
+# Caddy Configuration for CyberLabs CTF Platform
+#
+# Replace :80, :443 with your custom domain name (e.g. ctf.yourdomain.com) 
+# once you point your domain's DNS A-record to the VM's external IP address.
+# Caddy will automatically fetch and maintain SSL certificates via Let's Encrypt.
+
+:80, :443 {
+    # Set the root directory for the static frontend build
+    root * /var/www/html
+    file_server
+
+    # Reverse proxy WebSockets for interactive shell access
+    @websockets {
+        header Connection *Upgrade*
+        header Upgrade    websocket
+    }
+    reverse_proxy @websockets 127.0.0.1:8000
+
+    # Reverse proxy all REST API requests to FastAPI
+    reverse_proxy /api* 127.0.0.1:8000
+
+    # Handle SPA routing fallback (redirects deep URLs back to index.html)
+    try_files {path} /index.html
+}

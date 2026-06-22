@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: ctf_db
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-ctfdb}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ctfdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ctf_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ctf_backend
+    restart: always
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/ctfdb}
+      - SECRET_KEY=${SECRET_KEY:-09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7}
+      - PYTHONUNBUFFERED=1
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./challenges:/challenges
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ctf_network
+
+networks:
+  ctf_network:
+    name: ctf_network
+    driver: bridge
+
+volumes:
+  postgres_data:
