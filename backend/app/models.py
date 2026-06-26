@@ -15,6 +15,9 @@ class User(Base):
     points = Column(Integer, default=0, nullable=False)
     rank = Column(Integer, nullable=True)
     is_admin = Column(Boolean, default=False, nullable=False)
+    current_streak = Column(Integer, default=0, nullable=False)
+    longest_streak = Column(Integer, default=0, nullable=False)
+    last_solve_date = Column(DateTime(timezone=True), nullable=True)
 
     submissions = relationship("Submission", back_populates="user")
     instances = relationship("ChallengeInstance", back_populates="user")

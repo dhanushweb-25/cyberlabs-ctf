@@ -92,5 +92,40 @@ def get_profile(current_user: models.User = Depends(auth.get_current_user), db: 
         total_challenges=total_challenges,
         progress_percentage=round(progress_percentage, 1),
         recent_activities=activities,
-        is_admin=user_refreshed.is_admin
+        is_admin=user_refreshed.is_admin,
+        current_streak=user_refreshed.current_streak,
+        longest_streak=user_refreshed.longest_streak,
+        last_solve_date=user_refreshed.last_solve_date
+    )
+
+@router.get("/profile/{username}", response_model=schemas.UserProfileDetails)
+def get_public_profile(username: str, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    completed_submissions = db.query(models.Submission.challenge_id).filter(
+        models.Submission.user_id == user.id,
+        models.Submission.status == "Correct"
+    ).distinct().count()
+    
+    total_challenges = db.query(models.Challenge).count()
+    progress_percentage = (completed_submissions / total_challenges * 100) if total_challenges > 0 else 0.0
+    
+    activities = crud.get_user_activity(db, user.id)
+    
+    return schemas.UserProfileDetails(
+        username=user.username,
+        email="hidden@ctf.platform",  # Hide email for privacy
+        join_date=user.created_at,
+        points=user.points,
+        rank=user.rank or 9999,
+        completed_challenges=completed_submissions,
+        total_challenges=total_challenges,
+        progress_percentage=round(progress_percentage, 1),
+        recent_activities=activities,
+        is_admin=user.is_admin,
+        current_streak=user.current_streak,
+        longest_streak=user.longest_streak,
+        last_solve_date=user.last_solve_date
     )

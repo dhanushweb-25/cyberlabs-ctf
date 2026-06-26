@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Calendar, Award, Trophy, CheckCircle, TrendingUp, Cpu, Flame } from 'lucide-react';
+import { Mail, Calendar, Award, Trophy, CheckCircle, TrendingUp, Cpu, Flame, ArrowLeft } from 'lucide-react';
 
 interface ActivityItem {
   type: string;
@@ -25,28 +26,38 @@ interface ProfileData {
   last_solve_date: string | null;
 }
 
-export const Profile: React.FC = () => {
+export const UserProfile: React.FC = () => {
+  const { username } = useParams<{ username: string }>();
   const { token } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProfile();
-  }, [token]);
+    if (username) {
+      fetchUserProfile();
+    }
+  }, [username, token]);
 
-  const fetchProfile = async () => {
-    if (!token) return;
+  const fetchUserProfile = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch('/api/profile', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      setError(null);
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch(`/api/profile/${username}`, { headers });
       if (res.ok) {
         const data = await res.json();
         setProfile(data);
+      } else {
+        const data = await res.json();
+        setError(data.detail || "Failed to load user profile");
       }
     } catch (err) {
       console.error("Error loading user profile", err);
+      setError("A network error occurred.");
     } finally {
       setIsLoading(false);
     }
@@ -62,10 +73,31 @@ export const Profile: React.FC = () => {
     });
   };
 
-  if (isLoading || !profile) {
+  if (isLoading) {
     return (
-      <div className="flex min-h-[calc(100-16)] items-center justify-center bg-ctfBg">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-ctfBg">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent font-sans"></div>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="bg-ctfBg min-h-screen py-8 px-4 flex flex-col items-center justify-center text-center">
+        <div className="max-w-md bg-white border border-slate-200 rounded-2xl p-8 shadow-sm space-y-4">
+          <Trophy className="h-12 w-12 text-slate-300 mx-auto" />
+          <h2 className="text-xl font-bold text-slate-800">Profile Not Found</h2>
+          <p className="text-sm text-slate-500">
+            {error || `The user "${username}" does not exist or has inactive profile access.`}
+          </p>
+          <Link 
+            to="/scoreboard" 
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Scoreboard
+          </Link>
+        </div>
       </div>
     );
   }
@@ -74,6 +106,17 @@ export const Profile: React.FC = () => {
     <div className="bg-ctfBg min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl space-y-8">
         
+        {/* Navigation Breadcrumb */}
+        <div className="flex items-center">
+          <Link 
+            to="/scoreboard" 
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-705 transition-colors uppercase tracking-wider"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Scoreboard
+          </Link>
+        </div>
+
         {/* Profile Split Layout (Left: Identity card, Right: Learning Stats) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           

@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
-from .routers import auth, challenges, scoreboard, admin
+from .routers import auth, challenges, scoreboard, admin, admin_challenges
 from .config import settings
 from .seed import seed_db
 from .services.scheduler import scheduler
@@ -44,6 +44,7 @@ app.include_router(auth.router)
 app.include_router(challenges.router)
 app.include_router(scoreboard.router)
 app.include_router(admin.router)
+app.include_router(admin_challenges.router)
 
 @app.get("/")
 def read_root():

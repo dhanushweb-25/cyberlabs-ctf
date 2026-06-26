@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 import { Trophy, ArrowUpDown, Calendar, Award, CheckSquare, Search } from 'lucide-react';
 
 interface ScoreboardEntry {
@@ -123,7 +124,12 @@ export const Scoreboard: React.FC = () => {
             {/* 2nd Place */}
             <div className="flex flex-col items-center">
               <div className="h-10 w-10 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center text-xs font-bold text-slate-700">2</div>
-              <span className="text-xs font-bold text-slate-800 mt-2 truncate max-w-full">{entries[1].username}</span>
+              <Link 
+                to={`/profile/${entries[1].username}`}
+                className="text-xs font-bold text-slate-850 mt-2 truncate max-w-full hover:text-primary hover:underline transition-colors"
+              >
+                {entries[1].username}
+              </Link>
               <span className="text-[10px] text-slate-500 font-bold">{entries[1].points} pts</span>
               <div className="w-full bg-slate-200 rounded-t-lg h-20 mt-3 flex items-center justify-center text-slate-400 font-bold text-xs shadow-inner">2nd</div>
             </div>
@@ -132,7 +138,12 @@ export const Scoreboard: React.FC = () => {
             <div className="flex flex-col items-center">
               <Trophy className="h-6 w-6 text-warning animate-bounce mb-1" />
               <div className="h-12 w-12 rounded-full bg-amber-100 border-2 border-warning flex items-center justify-center text-sm font-bold text-warning">1</div>
-              <span className="text-sm font-bold text-slate-850 mt-2 truncate max-w-full">{entries[0].username}</span>
+              <Link 
+                to={`/profile/${entries[0].username}`}
+                className="text-sm font-bold text-slate-850 mt-2 truncate max-w-full hover:text-primary hover:underline transition-colors"
+              >
+                {entries[0].username}
+              </Link>
               <span className="text-xs text-secondary font-bold">{entries[0].points} pts</span>
               <div className="w-full bg-slate-300 rounded-t-lg h-28 mt-3 flex items-center justify-center text-slate-600 font-bold text-sm shadow-md">1st</div>
             </div>
@@ -140,7 +151,12 @@ export const Scoreboard: React.FC = () => {
             {/* 3rd Place */}
             <div className="flex flex-col items-center">
               <div className="h-10 w-10 rounded-full bg-orange-100 border-2 border-orange-200 flex items-center justify-center text-xs font-bold text-orange-700">3</div>
-              <span className="text-xs font-bold text-slate-800 mt-2 truncate max-w-full">{entries[2].username}</span>
+              <Link 
+                to={`/profile/${entries[2].username}`}
+                className="text-xs font-bold text-slate-850 mt-2 truncate max-w-full hover:text-primary hover:underline transition-colors"
+              >
+                {entries[2].username}
+              </Link>
               <span className="text-[10px] text-slate-500 font-bold">{entries[2].points} pts</span>
               <div className="w-full bg-slate-100 rounded-t-lg h-14 mt-3 flex items-center justify-center text-slate-400 font-bold text-xs shadow-inner">3rd</div>
             </div>
@@ -251,7 +267,12 @@ export const Scoreboard: React.FC = () => {
                         {/* Username */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-800">{entry.username}</span>
+                            <Link
+                              to={`/profile/${entry.username}`}
+                              className="font-bold text-slate-800 hover:text-primary hover:underline transition-colors"
+                            >
+                              {entry.username}
+                            </Link>
                             {isCurrentUser && (
                               <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[9px] font-bold tracking-wider">
                                 YOU

@@ -255,6 +255,33 @@ def submit_flag(
     
     # Terminate active lab if correct and not already solved
     if is_correct and not already_solved:
+        # Update streak
+        today = datetime.datetime.utcnow().date()
+        if current_user.last_solve_date is None:
+            current_user.current_streak = 1
+        else:
+            # Handle possible string representation in sqlite or standard datetime object
+            last_solve = current_user.last_solve_date
+            if isinstance(last_solve, str):
+                # Parse string date if stored as string
+                try:
+                    last_solve = datetime.datetime.fromisoformat(last_solve.replace('Z', '+00:00'))
+                except ValueError:
+                    last_solve = datetime.datetime.utcnow()
+            
+            last_solve_d = last_solve.date() if hasattr(last_solve, 'date') else last_solve
+            delta = today - last_solve_d
+            if delta.days == 1:
+                current_user.current_streak += 1
+            elif delta.days > 1:
+                current_user.current_streak = 1
+            # if delta.days == 0, keep as is
+            
+        if current_user.current_streak > current_user.longest_streak:
+            current_user.longest_streak = current_user.current_streak
+            
+        current_user.last_solve_date = datetime.datetime.utcnow()
+
         active_inst = db.query(models.ChallengeInstance).filter(
             models.ChallengeInstance.user_id == current_user.id,
             models.ChallengeInstance.challenge_id == challenge.id,
@@ -263,7 +290,7 @@ def submit_flag(
         if active_inst:
             provider_manager.terminate_instance(db, active_inst.id)
             active_inst.status = "Completed"
-            db.commit()
+        db.commit()
 
     points_earned = 0
     new_points = current_user.points

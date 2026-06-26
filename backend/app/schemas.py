@@ -30,6 +30,9 @@ class UserResponse(BaseModel):
     points: int
     rank: Optional[int] = None
     created_at: datetime
+    current_streak: int
+    longest_streak: int
+    last_solve_date: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -103,6 +106,9 @@ class UserProfileDetails(BaseModel):
     progress_percentage: float
     recent_activities: List[ActivityItem]
     is_admin: bool
+    current_streak: int
+    longest_streak: int
+    last_solve_date: Optional[datetime] = None
 
 
 # Challenge Instance Schemas

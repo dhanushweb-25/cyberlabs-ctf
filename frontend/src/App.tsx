@@ -16,6 +16,7 @@ import { Scoreboard } from './pages/Scoreboard';
 import { Profile } from './pages/Profile';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Workspace } from './pages/Workspace';
+import { UserProfile } from './pages/UserProfile';
 
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -43,6 +44,7 @@ const App: React.FC = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/scoreboard" element={<Scoreboard />} />
+              <Route path="/profile/:username" element={<UserProfile />} />
               <Route path="/challenges" element={<Catalog />} />
 
               {/* Private Routes */}
