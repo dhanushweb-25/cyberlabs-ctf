@@ -4,7 +4,7 @@
 # once you point your domain's DNS A-record to the VM's external IP address.
 # Caddy will automatically fetch and maintain SSL certificates via Let's Encrypt.
 
-:80, :443 {
+:80 {
     # Set the root directory for the static frontend build
     root * /var/www/html
     file_server
