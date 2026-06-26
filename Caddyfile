@@ -5,20 +5,24 @@
 # Caddy will automatically fetch and maintain SSL certificates via Let's Encrypt.
 
 :80 {
-    # Set the root directory for the static frontend build
-    root * /var/www/html
-    file_server
-
-    # Reverse proxy WebSockets for interactive shell access
+    # 1. API WebSockets and REST proxy
     @websockets {
         header Connection *Upgrade*
         header Upgrade    websocket
     }
-    reverse_proxy @websockets 127.0.0.1:8000
+    
+    handle @websockets {
+        reverse_proxy 127.0.0.1:8000
+    }
 
-    # Reverse proxy all REST API requests to FastAPI
-    reverse_proxy /api* 127.0.0.1:8000
+    handle /api* {
+        reverse_proxy 127.0.0.1:8000
+    }
 
-    # Handle SPA routing fallback (redirects deep URLs back to index.html)
-    try_files {path} /index.html
+    # 2. SPA static files and fallback
+    handle {
+        root * /var/www/html
+        try_files {path} /index.html
+        file_server
+    }
 }
