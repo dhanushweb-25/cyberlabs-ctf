@@ -481,13 +481,31 @@ export const Workspace: React.FC = () => {
               </div>
             </div>
 
-             {/* Iframe */}
-             <iframe
-               src={`/api/challenges/terminal/${lab.instance_name}?token=${token}`}
-               className="w-full flex-grow border-0 bg-slate-950"
-               title="Web Terminal"
-               allow="clipboard-read; clipboard-write"
-             />
+             {/* Iframe or Solved Banner */}
+             {challenge.is_solved ? (
+               <div className="flex-grow flex flex-col items-center justify-center bg-slate-950 text-slate-200 p-8 text-center space-y-4">
+                 <div className="h-16 w-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20 animate-pulse">
+                   <Award className="h-8 w-8" />
+                 </div>
+                 <h2 className="text-xl font-bold text-slate-100">Lab Completed Successfully!</h2>
+                 <p className="text-sm text-slate-400 max-w-md">
+                   Congratulations! You have successfully submitted the correct flag and completed this training lab. Your points have been updated on the scoreboard.
+                 </p>
+                 <button
+                   onClick={() => navigate('/challenges')}
+                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 transition-colors text-white rounded-lg text-sm font-semibold shadow-lg shadow-emerald-900/20"
+                 >
+                   Back to Challenges
+                 </button>
+               </div>
+             ) : (
+               <iframe
+                 src={`/api/challenges/terminal/${lab.instance_name}?token=${token}`}
+                 className="w-full flex-grow border-0 bg-slate-950"
+                 title="Web Terminal"
+                 allow="clipboard-read; clipboard-write"
+               />
+             )}
             
           </div>
         </div>
