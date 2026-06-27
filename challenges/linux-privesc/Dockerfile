@@ -1,8 +1,8 @@
-FROM alpine:latest
-RUN apk add --no-cache ttyd sudo python3
+FROM ctf-kali-attack:latest
+USER root
 
 # Create student user
-RUN adduser -D -s /bin/sh student
+RUN useradd -m -s /bin/bash student
 
 # Place flag owned by root and readable only by root
 RUN echo "CTF{python_library_hijack_master}" > /root/flag.txt && \
@@ -23,7 +23,8 @@ RUN echo "student ALL=(ALL) NOPASSWD: /usr/bin/python3 /opt/backup.py" > /etc/su
     chmod 0440 /etc/sudoers.d/student
 
 WORKDIR /home/student
+USER student
 EXPOSE 7681
 
-# Run ttyd serving su - student
-CMD ["ttyd", "-p", "7681", "-W", "-i", "0.0.0.0", "su", "-", "student"]
+# Run ttyd serving bash as student
+CMD ["ttyd", "-p", "7681", "-W", "-i", "0.0.0.0", "bash"]
