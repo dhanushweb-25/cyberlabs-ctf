@@ -14,7 +14,8 @@ CHALLENGE_MAP = {
     2: {"image": "ctf-challenge-permissions", "path": "/challenges/linux-permissions"},
     3: {"image": "ctf-challenge-users-groups", "path": "/challenges/users-groups"},
     4: {"image": "ctf-challenge-log-analysis", "path": "/challenges/log-analysis"},
-    5: {"image": "ctf-challenge-cron-jobs", "path": "/challenges/cron-jobs"}
+    5: {"image": "ctf-challenge-cron-jobs", "path": "/challenges/cron-jobs"},
+    10: {"image": "ctf-challenge-linux-privesc", "path": "/challenges/linux-privesc"}
 }
 
 NETWORK_NAME = "ctf_network"
