@@ -58,7 +58,11 @@ class DockerProvider(BaseProvider):
         # Ensure image is ready
         cfg = CHALLENGE_MAP.get(challenge_id)
         if not cfg:
-            raise Exception(f"No configuration for challenge ID {challenge_id}")
+            challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+            if challenge and challenge.provider_type == "docker" and challenge.docker_build_path:
+                cfg = {"image": challenge.docker_image, "path": challenge.docker_build_path}
+            else:
+                raise Exception(f"No configuration or build path for challenge ID {challenge_id}")
 
         img_name = cfg["image"]
         try:

@@ -13,7 +13,9 @@ import {
   Edit,
   X,
   LayoutDashboard,
-  List
+  List,
+  Sparkles,
+  Wand2
 } from 'lucide-react';
 
 interface AdminStats {
@@ -61,8 +63,11 @@ export const AdminDashboard: React.FC = () => {
   const [debouncedAuditUser, setDebouncedAuditUser] = useState('');
 
   // Challenge Management Tab States
-  const [activeTab, setActiveTab] = useState<'overview' | 'challenges'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'challenges' | 'ai_generator'>('overview');
   const [challenges, setChallenges] = useState<any[]>([]);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<{ success: boolean; message: string; challengeId?: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   
@@ -188,9 +193,53 @@ export const AdminDashboard: React.FC = () => {
     setFormError(null);
   };
 
-  // Fetch challenges if tab changes to challenges
+  const handleGenerateAI = async () => {
+    if (!aiPrompt.trim() || !token) return;
+
+    try {
+      setIsGeneratingAI(true);
+      setAiFeedback(null);
+
+      const res = await fetch('/api/admin/challenges/generate-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ prompt: aiPrompt.trim() })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAiFeedback({
+          success: true,
+          message: `Successfully created challenge: "${data.title}"!`,
+          challengeId: data.challenge_id
+        });
+        setAiPrompt('');
+        loadChallenges();
+        loadData();
+      } else {
+        const errData = await res.json();
+        setAiFeedback({
+          success: false,
+          message: errData.detail || 'Failed to generate challenge.'
+        });
+      }
+    } catch (err: any) {
+      console.error(err);
+      setAiFeedback({
+        success: false,
+        message: 'A network error occurred while generating.'
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  // Fetch challenges if tab changes to challenges or ai_generator
   useEffect(() => {
-    if (activeTab === 'challenges') {
+    if (activeTab === 'challenges' || activeTab === 'ai_generator') {
       loadChallenges();
     }
   }, [activeTab]);
@@ -367,9 +416,20 @@ export const AdminDashboard: React.FC = () => {
             <List className="h-4 w-4" />
             Manage Challenges
           </button>
+          <button
+            onClick={() => setActiveTab('ai_generator')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === 'ai_generator'
+                ? 'bg-primary text-white shadow-sm shadow-primary/10'
+                : 'bg-white border border-slate-200 text-slate-650 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <Sparkles className="h-4 w-4" />
+            AI Lab Builder
+          </button>
         </div>
 
-        {activeTab === 'overview' ? (
+        {activeTab === 'overview' && (
           <>
             {/* Overview Stats Cards Grid */}
             {stats && (
@@ -591,7 +651,9 @@ export const AdminDashboard: React.FC = () => {
               )}
             </div>
           </>
-        ) : (
+        )}
+
+        {activeTab === 'challenges' && (
           /* Manage Challenges Tab content */
           <div className="space-y-6">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -666,6 +728,74 @@ export const AdminDashboard: React.FC = () => {
                     </tbody>
                   </table>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'ai_generator' && (
+          /* AI Generator Tab Content */
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <Sparkles className="h-6 w-6 animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Gemini AI Lab Builder</h2>
+                  <p className="text-xs text-slate-500 font-medium">Describe the hands-on lab environment, files, and objectives, and Gemini will automatically construct and compile the Docker container challenge.</p>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-150 pt-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Prompt Idea & Exploit Logic</label>
+                   <textarea
+                     value={aiPrompt}
+                     onChange={(e) => setAiPrompt(e.target.value)}
+                     disabled={isGeneratingAI}
+                     className="block w-full rounded-xl border border-slate-350 px-4 py-3.5 text-sm text-slate-900 placeholder-slate-400 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors min-h-[140px]"
+                     placeholder="Example: Create a SQL injection challenge where players must bypass authentication on a local python server running on port 8080 to fetch the flag 'flag{sqli_admin_bypass}'."
+                   />
+                </div>
+
+                {aiFeedback && (
+                  <div className={`rounded-xl p-4 text-xs font-semibold border flex items-start gap-2.5 ${
+                    aiFeedback.success
+                      ? 'bg-green-50 text-success border-green-150'
+                      : 'bg-red-50 text-danger border-red-150'
+                  }`}>
+                    <div className="mt-0.5">
+                      {aiFeedback.success ? '✓' : '✗'}
+                    </div>
+                    <div className="space-y-1">
+                      <p>{aiFeedback.message}</p>
+                      {aiFeedback.challengeId && (
+                        <p className="text-[10px] text-slate-400 font-medium">Challenge ID: {aiFeedback.challengeId} is being compiled in the background.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={handleGenerateAI}
+                    disabled={isGeneratingAI || !aiPrompt.trim()}
+                    className="rounded-xl bg-indigo-650 px-6 py-3 font-semibold text-white shadow-lg hover:bg-indigo-700 hover:scale-[1.01] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isGeneratingAI ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        <span>AI is coding container scripts...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4" />
+                        <span>Generate Lab with Gemini</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

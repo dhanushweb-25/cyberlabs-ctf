@@ -3,6 +3,11 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 import logging
+import os
+import json
+import uuid
+import httpx
+import threading
 from ..database import get_db
 from .. import models, auth
 from ..services.audit import log_action
@@ -145,3 +150,148 @@ def delete_challenge(
         db.rollback()
         logger.error(f"Error deleting challenge: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete challenge: {str(e)}")
+
+
+class AIGenerateRequest(BaseModel):
+    prompt: str
+
+def build_docker_image_async(path: str, tag: str):
+    try:
+        import docker
+        client = docker.from_env()
+        logger.info(f"Background thread starting docker build for {tag} at {path}")
+        client.images.build(path=path, tag=tag, rm=True)
+        logger.info(f"Background thread successfully finished docker build for {tag}")
+    except Exception as e:
+        logger.error(f"Background thread failed to build docker image {tag}: {e}")
+
+@router.post("/generate-ai")
+def generate_challenge_ai(
+    req: AIGenerateRequest,
+    current_user: models.User = Depends(check_admin),
+    db: Session = Depends(get_db)
+):
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not gemini_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="GEMINI_API_KEY environment variable is not set on the server."
+        )
+
+    # Construct the instruction system prompt for Gemini
+    system_instruction = (
+        "You are an expert cybersecurity CTF lab developer. You design training challenges for Linux and Web exploitation.\n"
+        "Your task is to generate a fully functioning Docker container configuration and metadata for a challenge based on the user's request.\n"
+        "You MUST return a single JSON object matching this schema exactly:\n"
+        "{\n"
+        "  \"title\": \"Name of the challenge (string)\",\n"
+        "  \"description\": \"A detailed, rich Markdown description outlining the scenario, target details, and how to query it. Make it professional and premium.\",\n"
+        "  \"difficulty\": \"Easy\", \"Medium\", or \"Hard\",\n"
+        "  \"category\": \"Web\", \"Linux\", \"Cryptography\", or \"Reverse Engineering\",\n"
+        "  \"points\": 50, 100, 150, or 200 (integer),\n"
+        "  \"estimated_time\": \"20m\", \"45m\", \"1h\", etc. (string),\n"
+        "  \"flag_value\": \"flag{...} unique random key matching the topic (string)\",\n"
+        "  \"hint\": \"A helpful hint for the player (string)\",\n"
+        "  \"dockerfile\": \"Dockerfile string. Must inherit FROM ctf-kali-attack:latest. Must switch to USER root, do any setup (e.g. copy scripts, create directories), set WORKDIR /home/student, switch to USER student, EXPOSE 7681, and set CMD to run any background services and run ttyd (CMD command: CMD python3 /opt/app.py > /tmp/app.log 2>&1 & ttyd -p 7681 -W -i 0.0.0.0 bash)\",\n"
+        "  \"files\": {\n"
+        "     \"filename1\": \"full string content of the script or config file (e.g. vulnerable_app.py)\",\n"
+        "     \"filename2\": \"...\"\n"
+        "  }\n"
+        "}\n"
+        "Strict rules for your Dockerfile and code generation:\n"
+        "1. Do NOT run 'apt-get install' inside the Dockerfile unless absolutely necessary for custom utilities (like cron). All standard tools (python3, git, curl, nmap, netcat, hydra) are already pre-installed in the ctf-kali-attack:latest base image! This keeps builds fast.\n"
+        "2. Ensure you create a 'student' user: RUN useradd -m -s /bin/bash student.\n"
+        "3. In the CMD, start any server script in the background and end with: ttyd -p 7681 -W -i 0.0.0.0 bash.\n"
+        "4. Keep all file content self-contained and clean.\n"
+    )
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": f"{system_instruction}\n\nUser Request: {req.prompt}"}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "responseMimeType": "application/json"
+        }
+    }
+
+    try:
+        response = httpx.post(url, json=payload, timeout=45.0)
+        if response.status_code != 200:
+            raise Exception(f"Gemini API returned status {response.status_code}: {response.text}")
+            
+        data = response.json()
+        text_content = data["candidates"][0]["content"]["parts"][0]["text"]
+        result = json.loads(text_content.strip())
+        
+        # Validate result fields
+        required_fields = ["title", "description", "difficulty", "category", "points", "estimated_time", "flag_value", "dockerfile", "files"]
+        for field in required_fields:
+            if field not in result:
+                raise Exception(f"Missing required field '{field}' in Gemini AI response: {text_content}")
+
+        # Create unique folder and build path
+        uuid_hex = uuid.uuid4().hex[:12]
+        build_path = f"/challenges/ai-gen-{uuid_hex}"
+        image_name = f"ctf-challenge-ai-{uuid_hex}"
+
+        # Create directory
+        os.makedirs(build_path, exist_ok=True)
+
+        # Write Dockerfile
+        with open(os.path.join(build_path, "Dockerfile"), "w") as f:
+            f.write(result["dockerfile"])
+
+        # Write supporting files
+        for filename, content in result["files"].items():
+            file_filepath = os.path.join(build_path, filename)
+            os.makedirs(os.path.dirname(file_filepath), exist_ok=True)
+            with open(file_filepath, "w") as f:
+                f.write(content)
+
+        # Insert challenge into the database
+        db_challenge = models.Challenge(
+            title=result["title"],
+            description=result["description"],
+            difficulty=result["difficulty"],
+            points=int(result["points"]),
+            category=result["category"],
+            estimated_time=result["estimated_time"],
+            provider_type="docker",
+            docker_image=image_name,
+            docker_build_path=build_path,
+            hint=result.get("hint")
+        )
+        db.add(db_challenge)
+        db.commit()
+        db.refresh(db_challenge)
+
+        # Insert associated Flag
+        db_flag = models.Flag(
+            challenge_id=db_challenge.id,
+            flag_value=result["flag_value"]
+        )
+        db.add(db_flag)
+        db.commit()
+
+        # Trigger async build in separate thread
+        threading.Thread(target=build_docker_image_async, args=(build_path, image_name), daemon=True).start()
+
+        log_action(db, current_user.id, "AI Generate Challenge", f"AI Generated challenge '{result['title']}' (ID: {db_challenge.id})")
+        return {
+            "message": "Challenge generated successfully",
+            "challenge_id": db_challenge.id,
+            "title": result["title"],
+            "flag": result["flag_value"]
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating challenge via Gemini: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI Generation failed: {str(e)}"
+        )

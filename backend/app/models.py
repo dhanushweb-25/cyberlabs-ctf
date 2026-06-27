@@ -39,6 +39,8 @@ class Challenge(Base):
     category = Column(String, nullable=False)  # Linux, Networking, Web Security, SOC
     estimated_time = Column(String, nullable=False)  # e.g., "30m", "1h"
     provider_type = Column(String, default="docker", nullable=False)  # docker or gcp
+    docker_image = Column(String, nullable=True)
+    docker_build_path = Column(String, nullable=True)
     hint = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
