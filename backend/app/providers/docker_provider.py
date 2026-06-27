@@ -64,7 +64,17 @@ class DockerProvider(BaseProvider):
         try:
             self.client.images.get(img_name)
         except docker.errors.ImageNotFound:
-            self.ensure_images()
+            logger.info(f"Image {img_name} not found. Building on demand...")
+            path = cfg["path"]
+            if os.path.exists(path):
+                try:
+                    self.client.images.build(path=path, tag=img_name, rm=True)
+                    logger.info(f"Successfully built image {img_name}")
+                except Exception as e:
+                    logger.error(f"Error building image {img_name}: {e}")
+                    raise Exception(f"Failed to build image {img_name}: {e}")
+            else:
+                raise Exception(f"Build path {path} does not exist for image {img_name}")
 
         # Enforce maximum 1 active environment per user across all challenges
         active_instances = db.query(ChallengeInstance).filter(
