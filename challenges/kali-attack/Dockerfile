@@ -5,6 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Update and install packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssh-client \
     nmap \
     hydra \
     curl \
