@@ -228,7 +228,7 @@ def generate_challenge_ai(
         "3. If a victim container is requested, the player will access it over the network using its container hostname. Explain this clearly in the description!\n"
     )
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
     payload = {
         "contents": [
             {
