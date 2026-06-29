@@ -224,8 +224,9 @@ def generate_challenge_ai(
         "}\n"
         "Strict rules for your Dockerfiles:\n"
         "1. Do NOT run 'apt-get install' inside the Attack Dockerfile. All standard tools are pre-installed in ctf-kali-attack:latest! This keeps builds fast.\n"
-        "2. For the Attack Dockerfile, ensure you create a 'student' user and run ttyd as student. CMD: CMD [\"ttyd\", \"-p\", \"7681\", \"-W\", \"-i\", \"0.0.0.0\", \"bash\"]\n"
-        "3. If a victim container is requested, the player will access it over the network using its container hostname. Explain this clearly in the description!\n"
+        "2. For the Attack Dockerfile, create the 'student' user using exactly: `RUN useradd -m -s /bin/bash student`. Do NOT use dynamic or undefined variables like $UID or $GID!\n"
+        "3. For the Attack Dockerfile, run ttyd as student. CMD: CMD [\"ttyd\", \"-p\", \"7681\", \"-W\", \"-i\", \"0.0.0.0\", \"bash\"]\n"
+        "4. If a victim container is requested, the player will access it over the network using its container hostname. Explain this clearly in the description!\n"
     )
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
