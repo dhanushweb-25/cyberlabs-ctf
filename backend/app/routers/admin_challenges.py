@@ -228,6 +228,7 @@ def generate_challenge_ai(
         "3. At the end of the Attack Dockerfile, always switch back to `USER student` before setting the CMD.\n"
         "4. For the Attack Dockerfile, run ttyd. CMD: CMD [\"ttyd\", \"-p\", \"7681\", \"-W\", \"-i\", \"0.0.0.0\", \"bash\"]\n"
         "5. If a victim container is requested, the player will access it over the network using its container hostname. Explain this clearly in the description!\n"
+        "6. For the Victim Dockerfile, you MUST ONLY use modern, active LTS base images. Do NOT use old, archived base images (like debian buster, stretch, bullseye, or ubuntu 18.04/20.04). Use ONLY 'ubuntu:22.04', 'ubuntu:24.04', 'python:3.11-slim', or 'python:3.12-slim'.\n"
     )
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
