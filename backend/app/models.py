@@ -41,6 +41,8 @@ class Challenge(Base):
     provider_type = Column(String, default="docker", nullable=False)  # docker or gcp
     docker_image = Column(String, nullable=True)
     docker_build_path = Column(String, nullable=True)
+    victim_image = Column(String, nullable=True)
+    victim_build_path = Column(String, nullable=True)
     hint = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

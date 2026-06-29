@@ -79,6 +79,10 @@ export const AdminDashboard: React.FC = () => {
   const [category, setCategory] = useState('Linux');
   const [estimatedTime, setEstimatedTime] = useState('30m');
   const [providerType, setProviderType] = useState('docker');
+  const [dockerImage, setDockerImage] = useState('');
+  const [dockerBuildPath, setDockerBuildPath] = useState('');
+  const [victimImage, setVictimImage] = useState('');
+  const [victimBuildPath, setVictimBuildPath] = useState('');
   const [flagValue, setFlagValue] = useState('');
   const [hint, setHint] = useState('');
   const [showFormModal, setShowFormModal] = useState(false);
@@ -112,6 +116,10 @@ export const AdminDashboard: React.FC = () => {
       category,
       estimated_time: estimatedTime,
       provider_type: providerType,
+      docker_image: dockerImage || null,
+      docker_build_path: dockerBuildPath || null,
+      victim_image: victimImage || null,
+      victim_build_path: victimBuildPath || null,
       flag_value: flagValue,
       hint: hint || null
     };
@@ -154,6 +162,10 @@ export const AdminDashboard: React.FC = () => {
     setCategory(c.category);
     setEstimatedTime(c.estimated_time);
     setProviderType(c.provider_type);
+    setDockerImage(c.docker_image || "");
+    setDockerBuildPath(c.docker_build_path || "");
+    setVictimImage(c.victim_image || "");
+    setVictimBuildPath(c.victim_build_path || "");
     setFlagValue(""); // flags are private in DB, user can type a new one
     setHint(c.hint || "");
     setFormError(null);
@@ -188,6 +200,10 @@ export const AdminDashboard: React.FC = () => {
     setCategory('Linux');
     setEstimatedTime('30m');
     setProviderType('docker');
+    setDockerImage('');
+    setDockerBuildPath('');
+    setVictimImage('');
+    setVictimBuildPath('');
     setFlagValue('');
     setHint('');
     setFormError(null);

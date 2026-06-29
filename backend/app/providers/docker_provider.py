@@ -80,6 +80,25 @@ class DockerProvider(BaseProvider):
             else:
                 raise Exception(f"Build path {path} does not exist for image {img_name}")
 
+        # Ensure victim image is ready if configured
+        challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
+        victim_img_name = challenge.victim_image if challenge else None
+        victim_path = challenge.victim_build_path if challenge else None
+        if victim_img_name and victim_path:
+            try:
+                self.client.images.get(victim_img_name)
+            except docker.errors.ImageNotFound:
+                logger.info(f"Victim image {victim_img_name} not found. Building on demand...")
+                if os.path.exists(victim_path):
+                    try:
+                        self.client.images.build(path=victim_path, tag=victim_img_name, rm=True)
+                        logger.info(f"Successfully built victim image {victim_img_name}")
+                    except Exception as e:
+                        logger.error(f"Error building victim image {victim_img_name}: {e}")
+                        raise Exception(f"Failed to build victim image {victim_img_name}: {e}")
+                else:
+                    raise Exception(f"Victim build path {victim_path} does not exist for image {victim_img_name}")
+
         # Enforce maximum 1 active environment per user across all challenges
         active_instances = db.query(ChallengeInstance).filter(
             ChallengeInstance.user_id == user_id,
@@ -127,6 +146,31 @@ class DockerProvider(BaseProvider):
         db.refresh(db_instance)
 
         try:
+            # Spawn victim container first if configured
+            if challenge and challenge.victim_image:
+                victim_instance_name = f"ctf-victim-{user_id}-{challenge_id}"
+                try:
+                    old_victim = self.client.containers.get(victim_instance_name)
+                    logger.info(f"Removing pre-existing victim container {victim_instance_name}")
+                    old_victim.remove(force=True)
+                except docker.errors.NotFound:
+                    pass
+                
+                logger.info(f"Spawning victim container {victim_instance_name} running {challenge.victim_image}")
+                self.client.containers.run(
+                    image=challenge.victim_image,
+                    name=victim_instance_name,
+                    detach=True,
+                    restart_policy={"Name": "no"},
+                    network=NETWORK_NAME,
+                    labels={
+                        "ctf-platform": "true",
+                        "user-id": str(user_id),
+                        "challenge-id": str(challenge_id),
+                        "role": "victim"
+                    }
+                )
+
             # Clean up pre-existing container with same name if docker daemon has it
             try:
                 old_container = self.client.containers.get(instance_name)
@@ -182,17 +226,30 @@ class DockerProvider(BaseProvider):
         if not instance or instance.status in ["Completed", "Expired", "Terminated"]:
             return
 
-        if self.client and instance.container_id:
+        if self.client:
+            # 1. Stop and remove the attack container
+            if instance.container_id:
+                try:
+                    container = self.client.containers.get(instance.container_id)
+                    logger.info(f"Stopping container {instance.instance_name}")
+                    container.stop(timeout=5)
+                    container.remove(force=True)
+                except docker.errors.NotFound:
+                    pass
+                except Exception as e:
+                    logger.error(f"Failed to cleanly delete container {instance.instance_name}: {e}")
+
+            # 2. Stop and remove the associated victim container if it exists
+            victim_instance_name = f"ctf-victim-{instance.user_id}-{instance.challenge_id}"
             try:
-                container = self.client.containers.get(instance.container_id)
-                logger.info(f"Stopping container {instance.instance_name}")
-                container.stop(timeout=5)
-                container.remove(force=True)
+                victim_container = self.client.containers.get(victim_instance_name)
+                logger.info(f"Stopping victim container {victim_instance_name}")
+                victim_container.stop(timeout=5)
+                victim_container.remove(force=True)
             except docker.errors.NotFound:
-                # Maybe it was already deleted manually
                 pass
             except Exception as e:
-                logger.error(f"Failed to cleanly delete container {instance.instance_name}: {e}")
+                logger.error(f"Failed to cleanly delete victim container {victim_instance_name}: {e}")
 
         # Update DB status
         instance.status = "Terminated"

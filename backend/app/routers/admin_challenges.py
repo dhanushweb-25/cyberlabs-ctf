@@ -25,6 +25,10 @@ class ChallengeCreate(BaseModel):
     estimated_time: str
     provider_type: str  # docker, gcp
     flag_value: str
+    docker_image: Optional[str] = None
+    docker_build_path: Optional[str] = None
+    victim_image: Optional[str] = None
+    victim_build_path: Optional[str] = None
     hint: Optional[str] = None
 
 class ChallengeUpdate(BaseModel):
@@ -36,6 +40,10 @@ class ChallengeUpdate(BaseModel):
     estimated_time: Optional[str] = None
     provider_type: Optional[str] = None
     flag_value: Optional[str] = None
+    docker_image: Optional[str] = None
+    docker_build_path: Optional[str] = None
+    victim_image: Optional[str] = None
+    victim_build_path: Optional[str] = None
     hint: Optional[str] = None
 
 def check_admin(current_user: models.User = Depends(auth.get_current_user)):
@@ -62,6 +70,10 @@ def create_challenge(
             category=req.category,
             estimated_time=req.estimated_time,
             provider_type=req.provider_type,
+            docker_image=req.docker_image,
+            docker_build_path=req.docker_build_path,
+            victim_image=req.victim_image,
+            victim_build_path=req.victim_build_path,
             hint=req.hint
         )
         db.add(db_challenge)
@@ -110,6 +122,14 @@ def update_challenge(
             db_challenge.estimated_time = req.estimated_time
         if req.provider_type is not None:
             db_challenge.provider_type = req.provider_type
+        if req.docker_image is not None:
+            db_challenge.docker_image = req.docker_image
+        if req.docker_build_path is not None:
+            db_challenge.docker_build_path = req.docker_build_path
+        if req.victim_image is not None:
+            db_challenge.victim_image = req.victim_image
+        if req.victim_build_path is not None:
+            db_challenge.victim_build_path = req.victim_build_path
         if req.hint is not None:
             db_challenge.hint = req.hint
 
@@ -181,28 +201,31 @@ def generate_challenge_ai(
     # Construct the instruction system prompt for Gemini
     system_instruction = (
         "You are an expert cybersecurity CTF lab developer. You design training challenges for Linux and Web exploitation.\n"
-        "Your task is to generate a fully functioning Docker container configuration and metadata for a challenge based on the user's request.\n"
+        "Your task is to generate fully functioning Docker container configurations and metadata based on the user's request.\n"
+        "You MUST support both single-container challenges (terminal only) and dual-container challenges (Attack box terminal + Victim target).\n"
         "You MUST return a single JSON object matching this schema exactly:\n"
         "{\n"
         "  \"title\": \"Name of the challenge (string)\",\n"
-        "  \"description\": \"A detailed, rich Markdown description outlining the scenario, target details, and how to query it. Make it professional and premium.\",\n"
+        "  \"description\": \"A detailed, rich Markdown description outlining the scenario, target details (such as the victim container hostname like ctf-victim-{user_id}-{challenge_id}), and how to query it.\",\n"
         "  \"difficulty\": \"Easy\", \"Medium\", or \"Hard\",\n"
         "  \"category\": \"Web\", \"Linux\", \"Cryptography\", or \"Reverse Engineering\",\n"
         "  \"points\": 50, 100, 150, or 200 (integer),\n"
         "  \"estimated_time\": \"20m\", \"45m\", \"1h\", etc. (string),\n"
         "  \"flag_value\": \"flag{...} unique random key matching the topic (string)\",\n"
         "  \"hint\": \"A helpful hint for the player (string)\",\n"
-        "  \"dockerfile\": \"Dockerfile string. Must inherit FROM ctf-kali-attack:latest. Must switch to USER root, do any setup (e.g. copy scripts, create directories), set WORKDIR /home/student, switch to USER student, EXPOSE 7681, and set CMD to run any background services and run ttyd (CMD command: CMD python3 /opt/app.py > /tmp/app.log 2>&1 & ttyd -p 7681 -W -i 0.0.0.0 bash)\",\n"
+        "  \"dockerfile\": \"Dockerfile string for the Attack box. Must inherit FROM ctf-kali-attack:latest. Sets up student shell. Exposes 7681. Runs ttyd bash.\",\n"
         "  \"files\": {\n"
-        "     \"filename1\": \"full string content of the script or config file (e.g. vulnerable_app.py)\",\n"
-        "     \"filename2\": \"...\"\n"
+        "     \"filename1\": \"content of the script or config file for the attack box (e.g. exploit.py)\"\n"
+        "  },\n"
+        "  \"victim_dockerfile\": \"Optional. If the challenge requires a separate vulnerable target machine, write its Dockerfile here (e.g. FROM ubuntu:22.04 or FROM python:3.11-slim, installing and setting up the vulnerable service).\",\n"
+        "  \"victim_files\": {\n"
+        "     \"filename1\": \"Optional. Content of the script or configuration file for the victim container (e.g. vulnerable_app.py)\"\n"
         "  }\n"
         "}\n"
-        "Strict rules for your Dockerfile and code generation:\n"
-        "1. Do NOT run 'apt-get install' inside the Dockerfile unless absolutely necessary for custom utilities (like cron). All standard tools (python3, git, curl, nmap, netcat, hydra) are already pre-installed in the ctf-kali-attack:latest base image! This keeps builds fast.\n"
-        "2. Ensure you create a 'student' user: RUN useradd -m -s /bin/bash student.\n"
-        "3. In the CMD, start any server script in the background and end with: ttyd -p 7681 -W -i 0.0.0.0 bash.\n"
-        "4. Keep all file content self-contained and clean.\n"
+        "Strict rules for your Dockerfiles:\n"
+        "1. Do NOT run 'apt-get install' inside the Attack Dockerfile. All standard tools are pre-installed in ctf-kali-attack:latest! This keeps builds fast.\n"
+        "2. For the Attack Dockerfile, ensure you create a 'student' user and run ttyd as student. CMD: CMD [\"ttyd\", \"-p\", \"7681\", \"-W\", \"-i\", \"0.0.0.0\", \"bash\"]\n"
+        "3. If a victim container is requested, the player will access it over the network using its container hostname. Explain this clearly in the description!\n"
     )
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
@@ -229,29 +252,57 @@ def generate_challenge_ai(
         result = json.loads(text_content.strip())
         
         # Validate result fields
-        required_fields = ["title", "description", "difficulty", "category", "points", "estimated_time", "flag_value", "dockerfile", "files"]
+        required_fields = ["title", "description", "difficulty", "category", "points", "estimated_time", "flag_value", "dockerfile"]
         for field in required_fields:
             if field not in result:
                 raise Exception(f"Missing required field '{field}' in Gemini AI response: {text_content}")
 
         # Create unique folder and build path
         uuid_hex = uuid.uuid4().hex[:12]
-        build_path = f"/challenges/ai-gen-{uuid_hex}"
-        image_name = f"ctf-challenge-ai-{uuid_hex}"
-
-        # Create directory
-        os.makedirs(build_path, exist_ok=True)
-
-        # Write Dockerfile
-        with open(os.path.join(build_path, "Dockerfile"), "w") as f:
+        base_build_path = f"/challenges/ai-gen-{uuid_hex}"
+        
+        attack_image = f"ctf-challenge-ai-{uuid_hex}"
+        attack_build_path = f"{base_build_path}/attack"
+        
+        # Create directories
+        os.makedirs(attack_build_path, exist_ok=True)
+        
+        # Write Attack Dockerfile
+        with open(os.path.join(attack_build_path, "Dockerfile"), "w") as f:
             f.write(result["dockerfile"])
 
-        # Write supporting files
-        for filename, content in result["files"].items():
-            file_filepath = os.path.join(build_path, filename)
+        # Write Attack supporting files
+        for filename, content in result.get("files", {}).items():
+            file_filepath = os.path.join(attack_build_path, filename)
             os.makedirs(os.path.dirname(file_filepath), exist_ok=True)
             with open(file_filepath, "w") as f:
                 f.write(content)
+
+        # Trigger async build for Attack Box
+        threading.Thread(target=build_docker_image_async, args=(attack_build_path, attack_image), daemon=True).start()
+
+        # Handle Victim container if present
+        victim_image = None
+        victim_build_path = None
+        
+        if result.get("victim_dockerfile"):
+            victim_image = f"ctf-victim-ai-{uuid_hex}"
+            victim_build_path = f"{base_build_path}/victim"
+            os.makedirs(victim_build_path, exist_ok=True)
+            
+            # Write Victim Dockerfile
+            with open(os.path.join(victim_build_path, "Dockerfile"), "w") as f:
+                f.write(result["victim_dockerfile"])
+                
+            # Write Victim supporting files
+            for filename, content in result.get("victim_files", {}).items():
+                file_filepath = os.path.join(victim_build_path, filename)
+                os.makedirs(os.path.dirname(file_filepath), exist_ok=True)
+                with open(file_filepath, "w") as f:
+                    f.write(content)
+                    
+            # Trigger async build for Victim Box
+            threading.Thread(target=build_docker_image_async, args=(victim_build_path, victim_image), daemon=True).start()
 
         # Insert challenge into the database
         db_challenge = models.Challenge(
@@ -262,8 +313,10 @@ def generate_challenge_ai(
             category=result["category"],
             estimated_time=result["estimated_time"],
             provider_type="docker",
-            docker_image=image_name,
-            docker_build_path=build_path,
+            docker_image=attack_image,
+            docker_build_path=attack_build_path,
+            victim_image=victim_image,
+            victim_build_path=victim_build_path,
             hint=result.get("hint")
         )
         db.add(db_challenge)
@@ -277,9 +330,6 @@ def generate_challenge_ai(
         )
         db.add(db_flag)
         db.commit()
-
-        # Trigger async build in separate thread
-        threading.Thread(target=build_docker_image_async, args=(build_path, image_name), daemon=True).start()
 
         log_action(db, current_user.id, "AI Generate Challenge", f"AI Generated challenge '{result['title']}' (ID: {db_challenge.id})")
         return {
