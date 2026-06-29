@@ -367,7 +367,9 @@ export const Workspace: React.FC = () => {
           <div className="space-y-2">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mission Target</h3>
             <p className="text-xs text-slate-450 leading-relaxed whitespace-pre-line bg-slate-900/20 p-4 rounded-xl border border-slate-850">
-              {challenge.description}
+              {challenge.description
+                .replace(/{user_id}/g, String(lab?.user_id || ''))
+                .replace(/{challenge_id}/g, String(challenge?.id || ''))}
             </p>
           </div>
 
@@ -409,7 +411,11 @@ export const Workspace: React.FC = () => {
               
               {showHint && (
                 <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3.5 text-xs text-amber-300 leading-normal animate-fadeIn font-semibold">
-                  {challenge.hint}
+                  {challenge.hint
+                    ? challenge.hint
+                        .replace(/{user_id}/g, String(lab?.user_id || ''))
+                        .replace(/{challenge_id}/g, String(challenge?.id || ''))
+                    : ''}
                 </div>
               )}
             </div>
